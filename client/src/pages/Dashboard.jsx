@@ -1,29 +1,29 @@
-import { mockApplications } from "../data/mockApplications.js";
+import { Link } from "react-router-dom";
+import EmptyState from "../components/EmptyState.jsx";
 import KpiCard from "../components/KpiCard.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
-import EmptyState from "../components/EmptyState.jsx";
-import { Link } from "react-router-dom";
+import { useApplications } from "../context/ApplicationsContext.jsx";
 
 function countByStatus(items, status) {
   return items.filter((x) => x.status === status).length;
 }
 
 export default function Dashboard() {
-  const items = mockApplications;
+  const { applications } = useApplications();
 
-  const total = items.length;
-  const applied = countByStatus(items, "Applied");
-  const interview = countByStatus(items, "Interview");
-  const offer = countByStatus(items, "Offer");
-  const rejected = countByStatus(items, "Rejected");
+  const total = applications.length;
+  const applied = countByStatus(applications, "Applied");
+  const interview = countByStatus(applications, "Interview");
+  const offer = countByStatus(applications, "Offer");
+  const rejected = countByStatus(applications, "Rejected");
 
-  const recent = [...items]
+  const recent = [...applications]
     .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))
     .slice(0, 5);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
           <p className="mt-1 text-sm text-slate-600">
@@ -39,7 +39,7 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard label="Total" value={total} />
         <KpiCard label="Applied" value={applied} />
         <KpiCard label="Interview" value={interview} />
@@ -54,7 +54,7 @@ export default function Dashboard() {
           </h2>
           <Link
             to="/applications"
-            className="text-sm text-slate-600 hover:text-slate-900 underline underline-offset-4"
+            className="text-sm text-slate-600 underline underline-offset-4 hover:text-slate-900"
           >
             See all
           </Link>
@@ -74,15 +74,18 @@ export default function Dashboard() {
             }
           />
         ) : (
-          <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <ul className="divide-y divide-slate-100">
               {recent.map((a) => (
-                <li key={a.id} className="p-4 flex items-center justify-between">
+                <li
+                  key={a.id}
+                  className="flex items-center justify-between p-4"
+                >
                   <div>
                     <div className="font-medium text-slate-900">
                       {a.company} — {a.role}
                     </div>
-                    <div className="text-xs text-slate-500 mt-1">
+                    <div className="mt-1 text-xs text-slate-500">
                       {a.location || "—"} • {a.dateApplied || "—"}
                     </div>
                   </div>
