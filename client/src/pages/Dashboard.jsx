@@ -9,7 +9,7 @@ function countByStatus(items, status) {
 }
 
 export default function Dashboard() {
-  const { applications } = useApplications();
+  const { applications, loading, error } = useApplications();
 
   const total = applications.length;
   const applied = countByStatus(applications, "Applied");
@@ -39,12 +39,18 @@ export default function Dashboard() {
         </Link>
       </div>
 
+      {error ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiCard label="Total" value={total} />
-        <KpiCard label="Applied" value={applied} />
-        <KpiCard label="Interview" value={interview} />
-        <KpiCard label="Offer" value={offer} />
-        <KpiCard label="Rejected" value={rejected} />
+        <KpiCard label="Total" value={loading ? "..." : total} />
+        <KpiCard label="Applied" value={loading ? "..." : applied} />
+        <KpiCard label="Interview" value={loading ? "..." : interview} />
+        <KpiCard label="Offer" value={loading ? "..." : offer} />
+        <KpiCard label="Rejected" value={loading ? "..." : rejected} />
       </div>
 
       <section className="space-y-3">
@@ -60,7 +66,11 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {recent.length === 0 ? (
+        {loading ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
+            Loading applications...
+          </div>
+        ) : recent.length === 0 ? (
           <EmptyState
             title="No applications yet"
             subtitle="Add your first application to see stats and recent activity."

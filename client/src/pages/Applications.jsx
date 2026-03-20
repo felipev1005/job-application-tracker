@@ -8,8 +8,15 @@ import { useApplications } from "../context/ApplicationsContext.jsx";
 const STATUSES = ["All", "Applied", "Interview", "Offer", "Rejected"];
 
 export default function Applications() {
-  const { applications, addApplication, updateApplication, deleteApplication } =
-    useApplications();
+  const {
+    applications,
+    loading,
+    submitting,
+    error,
+    addApplication,
+    updateApplication,
+    deleteApplication,
+  } = useApplications();
 
   const [status, setStatus] = useState("All");
   const [query, setQuery] = useState("");
@@ -46,20 +53,24 @@ export default function Applications() {
     setEditingItem(null);
   }
 
-  function handleSubmit(formValues) {
-    if (editingItem) {
-      updateApplication(editingItem.id, formValues);
-    } else {
-      addApplication(formValues);
-    }
+  async function handleSubmit(formValues) {
+    const result = editingItem
+      ? await updateApplication(editingItem.id, formValues)
+      : await addApplication(formValues);
 
-    handleCloseModal();
+    if (result.success) {
+      handleCloseModal();
+    }
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteTarget) return;
-    deleteApplication(deleteTarget.id);
-    setDeleteTarget(null);
+
+    const result = await deleteApplication(deleteTarget.id);
+
+    if (result.success) {
+      setDeleteTarget(null);
+    }
   }
 
   return (
@@ -80,6 +91,12 @@ export default function Applications() {
           + Add application
         </button>
       </div>
+
+      {error ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -112,7 +129,11 @@ export default function Applications() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
+          Loading applications...
+        </div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           title="No matching applications"
           subtitle="Try clearing your filters or add a new application."
@@ -150,7 +171,7 @@ export default function Applications() {
             ? `Are you sure you want to delete ${deleteTarget.company} — ${deleteTarget.role}?`
             : ""
         }
-        confirmText="Delete"
+        confirmText={submitting ? "Deleting..." : "Delete"}
         cancelText="Cancel"
         onConfirm={handleConfirmDelete}
         onClose={() => setDeleteTarget(null)}

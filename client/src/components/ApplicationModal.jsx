@@ -21,11 +21,13 @@ export default function ApplicationModal({
 }) {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
       setForm(initialValues || DEFAULT_FORM);
       setErrors({});
+      setSaving(false);
     }
   }, [open, initialValues]);
 
@@ -36,7 +38,7 @@ export default function ApplicationModal({
     setForm((prev) => ({ ...prev, [name]: value }));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const nextErrors = {};
@@ -53,12 +55,14 @@ export default function ApplicationModal({
 
     if (Object.keys(nextErrors).length > 0) return;
 
-    onSubmit(form);
+    setSaving(true);
+    await onSubmit(form);
+    setSaving(false);
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white shadow-xl border border-slate-200">
+      <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">
@@ -78,8 +82,8 @@ export default function ApplicationModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="text-sm font-medium text-slate-700">
                 Company *
@@ -188,9 +192,16 @@ export default function ApplicationModal({
             </button>
             <button
               type="submit"
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              disabled={saving}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {mode === "edit" ? "Save changes" : "Add application"}
+              {saving
+                ? mode === "edit"
+                  ? "Saving..."
+                  : "Adding..."
+                : mode === "edit"
+                ? "Save changes"
+                : "Add application"}
             </button>
           </div>
         </form>
