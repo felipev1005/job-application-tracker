@@ -1,8 +1,10 @@
 export default function KpiCard({ label, value, hint }) {
   return (
-    <div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-5">
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className="mt-2 text-3xl font-semibold text-slate-900">{value}</div>
+    <div className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-lg shadow-black/20 backdrop-blur-xl transition hover:-translate-y-1 hover:border-indigo-400/30 hover:bg-white/[0.07]">
+      <div className="text-sm font-medium text-slate-400">{label}</div>
+      <div className="mt-3 text-4xl font-semibold tracking-tight text-white">
+        {value}
+      </div>
       {hint ? <div className="mt-2 text-xs text-slate-500">{hint}</div> : null}
     </div>
   );
