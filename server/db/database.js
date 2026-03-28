@@ -19,9 +19,20 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 function initializeDatabase() {
-  const createTableQuery = `
+  const createUsersTableQuery = `
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      createdAt TEXT NOT NULL
+    )
+  `;
+
+  const createApplicationsTableQuery = `
     CREATE TABLE IF NOT EXISTS applications (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
       company TEXT NOT NULL,
       role TEXT NOT NULL,
       status TEXT NOT NULL,
@@ -29,16 +40,27 @@ function initializeDatabase() {
       link TEXT,
       dateApplied TEXT,
       notes TEXT,
-      createdAt TEXT NOT NULL
+      createdAt TEXT NOT NULL,
+      FOREIGN KEY (userId) REFERENCES users(id)
     )
   `;
 
-  db.run(createTableQuery, (err) => {
-    if (err) {
-      console.error("Failed to create applications table:", err.message);
-    } else {
-      console.log("Applications table is ready.");
-    }
+  db.serialize(() => {
+    db.run(createUsersTableQuery, (err) => {
+      if (err) {
+        console.error("Failed to create users table:", err.message);
+      } else {
+        console.log("Users table is ready.");
+      }
+    });
+
+    db.run(createApplicationsTableQuery, (err) => {
+      if (err) {
+        console.error("Failed to create applications table:", err.message);
+      } else {
+        console.log("Applications table is ready.");
+      }
+    });
   });
 }
 

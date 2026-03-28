@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { useAuth } from "./AuthContext.jsx";
 
 const ApplicationsContext = createContext();
 
@@ -17,23 +18,37 @@ function normalizeApplication(values) {
 }
 
 export function ApplicationsProvider({ children }) {
+  const { token, isAuthenticated } = useAuth();
+
   const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   async function fetchApplications() {
+    if (!isAuthenticated || !token) {
+      setApplications([]);
+      setLoading(false);
+      setError("");
+      return;
+    }
+
     try {
       setLoading(true);
       setError("");
 
-      const response = await fetch(API_BASE_URL);
-
-      if (!response.ok) {
-        throw new Error("Failed to load applications.");
-      }
+      const response = await fetch(API_BASE_URL, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to load applications.");
+      }
+
       setApplications(data);
     } catch (err) {
       setError(err.message || "Something went wrong while loading data.");
@@ -44,7 +59,7 @@ export function ApplicationsProvider({ children }) {
 
   useEffect(() => {
     fetchApplications();
-  }, []);
+  }, [isAuthenticated, token]);
 
   async function addApplication(values) {
     try {
@@ -57,6 +72,7 @@ export function ApplicationsProvider({ children }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -88,6 +104,7 @@ export function ApplicationsProvider({ children }) {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(payload),
       });
@@ -118,6 +135,9 @@ export function ApplicationsProvider({ children }) {
 
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       const data = await response.json();

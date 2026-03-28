@@ -1,10 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const { db } = require("../db/database");
+const { requireAuth } = require("../middleware/authMiddleware");
 
 function mapApplicationRow(row) {
   return {
     id: row.id,
+    userId: row.userId,
     company: row.company,
     role: row.role,
     status: row.status,
@@ -16,14 +18,15 @@ function mapApplicationRow(row) {
   };
 }
 
-router.get("/", (req, res) => {
+router.get("/", requireAuth, (req, res) => {
   const query = `
     SELECT *
     FROM applications
+    WHERE userId = ?
     ORDER BY datetime(createdAt) DESC
   `;
 
-  db.all(query, [], (err, rows) => {
+  db.all(query, [req.user.id], (err, rows) => {
     if (err) {
       return res.status(500).json({ error: "Failed to fetch applications." });
     }
@@ -33,7 +36,7 @@ router.get("/", (req, res) => {
   });
 });
 
-router.post("/", (req, res) => {
+router.post("/", requireAuth, (req, res) => {
   const {
     company,
     role,
@@ -56,6 +59,7 @@ router.post("/", (req, res) => {
 
   const query = `
     INSERT INTO applications (
+      userId,
       company,
       role,
       status,
@@ -65,10 +69,11 @@ router.post("/", (req, res) => {
       notes,
       createdAt
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
   const params = [
+    req.user.id,
     company.trim(),
     role.trim(),
     status,
@@ -86,6 +91,7 @@ router.post("/", (req, res) => {
 
     res.status(201).json({
       id: this.lastID,
+      userId: req.user.id,
       company: company.trim(),
       role: role.trim(),
       status,
@@ -98,7 +104,7 @@ router.post("/", (req, res) => {
   });
 });
 
-router.put("/:id", (req, res) => {
+router.put("/:id", requireAuth, (req, res) => {
   const { id } = req.params;
   const {
     company,
@@ -128,7 +134,7 @@ router.put("/:id", (req, res) => {
       link = ?,
       dateApplied = ?,
       notes = ?
-    WHERE id = ?
+    WHERE id = ? AND userId = ?
   `;
 
   const params = [
@@ -140,6 +146,7 @@ router.put("/:id", (req, res) => {
     dateApplied,
     notes.trim(),
     id,
+    req.user.id,
   ];
 
   db.run(query, params, function (err) {
@@ -151,32 +158,40 @@ router.put("/:id", (req, res) => {
       return res.status(404).json({ error: "Application not found." });
     }
 
-    db.get(`SELECT * FROM applications WHERE id = ?`, [id], (fetchErr, row) => {
-      if (fetchErr) {
-        return res
-          .status(500)
-          .json({ error: "Application updated, but failed to fetch it." });
-      }
+    db.get(
+      `SELECT * FROM applications WHERE id = ? AND userId = ?`,
+      [id, req.user.id],
+      (fetchErr, row) => {
+        if (fetchErr) {
+          return res
+            .status(500)
+            .json({ error: "Application updated, but failed to fetch it." });
+        }
 
-      res.json(mapApplicationRow(row));
-    });
+        res.json(mapApplicationRow(row));
+      }
+    );
   });
 });
 
-router.delete("/:id", (req, res) => {
+router.delete("/:id", requireAuth, (req, res) => {
   const { id } = req.params;
 
-  db.run(`DELETE FROM applications WHERE id = ?`, [id], function (err) {
-    if (err) {
-      return res.status(500).json({ error: "Failed to delete application." });
-    }
+  db.run(
+    `DELETE FROM applications WHERE id = ? AND userId = ?`,
+    [id, req.user.id],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: "Failed to delete application." });
+      }
 
-    if (this.changes === 0) {
-      return res.status(404).json({ error: "Application not found." });
-    }
+      if (this.changes === 0) {
+        return res.status(404).json({ error: "Application not found." });
+      }
 
-    res.json({ message: "Application deleted successfully." });
-  });
+      res.json({ message: "Application deleted successfully." });
+    }
+  );
 });
 
 module.exports = router;

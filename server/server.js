@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { initializeDatabase } = require("./db/database");
 const applicationsRoutes = require("./routes/application");
+const authRoutes = require("./routes/auth");
 
 const app = express();
 const PORT = 5000;
@@ -15,6 +16,7 @@ app.get("/", (req, res) => {
   res.json({ message: "Job Tracker API is running." });
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/applications", applicationsRoutes);
 
 app.use((req, res) => {

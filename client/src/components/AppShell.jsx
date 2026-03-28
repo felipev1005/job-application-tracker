@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
 
 function NavItem({ to, children }) {
   return (
@@ -20,6 +21,8 @@ function NavItem({ to, children }) {
 }
 
 export default function AppShell({ children }) {
+  const { isAuthenticated, user, logout } = useAuth();
+
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur-xl">
@@ -30,16 +33,34 @@ export default function AppShell({ children }) {
             </div>
             <div className="leading-tight">
               <div className="font-semibold text-white">Job Tracker</div>
-              <div className="text-xs text-slate-400">
-                Track applications like a pro
-              </div>
             </div>
           </div>
 
-          <nav className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-1">
-            <NavItem to="/">Dashboard</NavItem>
-            <NavItem to="/applications">Applications</NavItem>
-          </nav>
+          {isAuthenticated ? (
+            <div className="flex items-center gap-3">
+              <nav className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-1">
+                <NavItem to="/">Dashboard</NavItem>
+                <NavItem to="/applications">Applications</NavItem>
+              </nav>
+
+              <div className="hidden text-sm text-slate-400 md:block">
+                {user?.name}
+              </div>
+
+              <button
+                type="button"
+                onClick={logout}
+                className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <nav className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-1">
+              <NavItem to="/login">Login</NavItem>
+              <NavItem to="/register">Register</NavItem>
+            </nav>
+          )}
         </div>
       </header>
 
