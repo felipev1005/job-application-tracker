@@ -3,7 +3,7 @@ import { useAuth } from "./AuthContext.jsx";
 
 const ApplicationsContext = createContext();
 
-const API_BASE_URL = "http://localhost:5000/api/applications";
+const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/applications`;
 
 function normalizeApplication(values) {
   return {

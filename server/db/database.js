@@ -1,70 +1,46 @@
-const path = require("path");
-const fs = require("fs");
-const sqlite3 = require("sqlite3").verbose();
+const { Pool } = require("pg");
 
-const dataDir = path.join(__dirname, "..", "data");
-
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL is missing.");
 }
 
-const dbPath = path.join(dataDir, "job-tracker.db");
-
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error("Failed to connect to SQLite database:", err.message);
-  } else {
-    console.log("Connected to SQLite database.");
-  }
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false,
+  },
 });
 
-function initializeDatabase() {
-  const createUsersTableQuery = `
+async function initializeDatabase() {
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
-      createdAt TEXT NOT NULL
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
-  `;
+  `);
 
-  const createApplicationsTableQuery = `
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS applications (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      userId INTEGER NOT NULL,
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       company TEXT NOT NULL,
       role TEXT NOT NULL,
       status TEXT NOT NULL,
       location TEXT,
       link TEXT,
-      dateApplied TEXT,
+      date_applied TEXT,
       notes TEXT,
-      createdAt TEXT NOT NULL,
-      FOREIGN KEY (userId) REFERENCES users(id)
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     )
-  `;
+  `);
 
-  db.serialize(() => {
-    db.run(createUsersTableQuery, (err) => {
-      if (err) {
-        console.error("Failed to create users table:", err.message);
-      } else {
-        console.log("Users table is ready.");
-      }
-    });
-
-    db.run(createApplicationsTableQuery, (err) => {
-      if (err) {
-        console.error("Failed to create applications table:", err.message);
-      } else {
-        console.log("Applications table is ready.");
-      }
-    });
-  });
+  console.log("PostgreSQL tables are ready.");
 }
 
 module.exports = {
-  db,
+  pool,
   initializeDatabase,
 };

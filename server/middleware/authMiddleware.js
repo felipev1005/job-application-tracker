@@ -1,6 +1,10 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = "super_secret_job_tracker_key";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET is missing.");
+}
 
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;

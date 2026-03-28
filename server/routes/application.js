@@ -1,42 +1,43 @@
 const express = require("express");
 const router = express.Router();
-const { db } = require("../db/database");
+const { pool } = require("../db/database");
 const { requireAuth } = require("../middleware/authMiddleware");
 
 function mapApplicationRow(row) {
   return {
     id: row.id,
-    userId: row.userId,
+    userId: row.user_id,
     company: row.company,
     role: row.role,
     status: row.status,
     location: row.location || "",
     link: row.link || "",
-    dateApplied: row.dateApplied || "",
+    dateApplied: row.date_applied || "",
     notes: row.notes || "",
-    createdAt: row.createdAt,
+    createdAt: row.created_at,
   };
 }
 
-router.get("/", requireAuth, (req, res) => {
-  const query = `
-    SELECT *
-    FROM applications
-    WHERE userId = ?
-    ORDER BY datetime(createdAt) DESC
-  `;
+router.get("/", requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM applications
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      `,
+      [req.user.id]
+    );
 
-  db.all(query, [req.user.id], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: "Failed to fetch applications." });
-    }
-
-    const applications = rows.map(mapApplicationRow);
+    const applications = result.rows.map(mapApplicationRow);
     res.json(applications);
-  });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch applications." });
+  }
 });
 
-router.post("/", requireAuth, (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   const {
     company,
     role,
@@ -55,56 +56,41 @@ router.post("/", requireAuth, (req, res) => {
     return res.status(400).json({ error: "Role is required." });
   }
 
-  const createdAt = new Date().toISOString();
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO applications (
+        user_id,
+        company,
+        role,
+        status,
+        location,
+        link,
+        date_applied,
+        notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+      `,
+      [
+        req.user.id,
+        company.trim(),
+        role.trim(),
+        status,
+        location.trim(),
+        link.trim(),
+        dateApplied,
+        notes.trim(),
+      ]
+    );
 
-  const query = `
-    INSERT INTO applications (
-      userId,
-      company,
-      role,
-      status,
-      location,
-      link,
-      dateApplied,
-      notes,
-      createdAt
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-
-  const params = [
-    req.user.id,
-    company.trim(),
-    role.trim(),
-    status,
-    location.trim(),
-    link.trim(),
-    dateApplied,
-    notes.trim(),
-    createdAt,
-  ];
-
-  db.run(query, params, function (err) {
-    if (err) {
-      return res.status(500).json({ error: "Failed to create application." });
-    }
-
-    res.status(201).json({
-      id: this.lastID,
-      userId: req.user.id,
-      company: company.trim(),
-      role: role.trim(),
-      status,
-      location: location.trim(),
-      link: link.trim(),
-      dateApplied,
-      notes: notes.trim(),
-      createdAt,
-    });
-  });
+    res.status(201).json(mapApplicationRow(result.rows[0]));
+  } catch (error) {
+    res.status(500).json({ error: "Failed to create application." });
+  }
 });
 
-router.put("/:id", requireAuth, (req, res) => {
+router.put("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const {
     company,
@@ -124,74 +110,65 @@ router.put("/:id", requireAuth, (req, res) => {
     return res.status(400).json({ error: "Role is required." });
   }
 
-  const query = `
-    UPDATE applications
-    SET
-      company = ?,
-      role = ?,
-      status = ?,
-      location = ?,
-      link = ?,
-      dateApplied = ?,
-      notes = ?
-    WHERE id = ? AND userId = ?
-  `;
+  try {
+    const result = await pool.query(
+      `
+      UPDATE applications
+      SET
+        company = $1,
+        role = $2,
+        status = $3,
+        location = $4,
+        link = $5,
+        date_applied = $6,
+        notes = $7
+      WHERE id = $8 AND user_id = $9
+      RETURNING *
+      `,
+      [
+        company.trim(),
+        role.trim(),
+        status,
+        location.trim(),
+        link.trim(),
+        dateApplied,
+        notes.trim(),
+        id,
+        req.user.id,
+      ]
+    );
 
-  const params = [
-    company.trim(),
-    role.trim(),
-    status,
-    location.trim(),
-    link.trim(),
-    dateApplied,
-    notes.trim(),
-    id,
-    req.user.id,
-  ];
-
-  db.run(query, params, function (err) {
-    if (err) {
-      return res.status(500).json({ error: "Failed to update application." });
-    }
-
-    if (this.changes === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: "Application not found." });
     }
 
-    db.get(
-      `SELECT * FROM applications WHERE id = ? AND userId = ?`,
-      [id, req.user.id],
-      (fetchErr, row) => {
-        if (fetchErr) {
-          return res
-            .status(500)
-            .json({ error: "Application updated, but failed to fetch it." });
-        }
-
-        res.json(mapApplicationRow(row));
-      }
-    );
-  });
+    res.json(mapApplicationRow(result.rows[0]));
+  } catch (error) {
+    res.status(500).json({ error: "Failed to update application." });
+  }
 });
 
-router.delete("/:id", requireAuth, (req, res) => {
+router.delete("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
 
-  db.run(
-    `DELETE FROM applications WHERE id = ? AND userId = ?`,
-    [id, req.user.id],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Failed to delete application." });
-      }
+  try {
+    const result = await pool.query(
+      `
+      DELETE FROM applications
+      WHERE id = $1 AND user_id = $2
+      RETURNING id
+      `,
+      [id, req.user.id]
+    );
 
-      if (this.changes === 0) {
-        return res.status(404).json({ error: "Application not found." });
-      }
-
-      res.json({ message: "Application deleted successfully." });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Application not found." });
     }
-  );
+
+    res.json({ message: "Application deleted successfully." });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete application." });
+  }
 });
 
 module.exports = router;
