@@ -3,7 +3,10 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 const AuthContext = createContext();
 console.log("AUTH API BASE URL:", API_BASE_URL);
 
-const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api/auth`;
+const API_BASE_URL = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api/auth`
+  : "";
+console.log("AUTH API BASE URL:", API_BASE_URL);
 const TOKEN_KEY = "job_tracker_token";
 const USER_KEY = "job_tracker_user";
 
